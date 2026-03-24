@@ -1,6 +1,6 @@
 import type { Alpine } from "alpinejs";
+import { createAdCopyStore } from "./store/app";
 
 export default function initAlpine(Alpine: Alpine) {
-  // Intentionally minimal.
-  // Each app will register its own stores here later.
+  Alpine.store("app", createAdCopyStore());
 }
