@@ -1,0 +1,143 @@
+---
+import AppShell from "../layouts/AppShell.astro";
+import { AvButton, AvCard, AvInput, AvTextarea } from "@ansiversa/components";
+import { appMeta } from "../app.meta";
+---
+
+<AppShell title={`${appMeta.name} – Ansiversa`} description={appMeta.description}>
+  <main x-data x-init="$store.app.init()" class="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+    <div class="mb-6 flex items-center justify-between gap-3">
+      <div>
+        <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Marketing Draft Studio</p>
+        <h1 class="text-2xl font-semibold text-white md:text-3xl">{appMeta.name}</h1>
+      </div>
+      <p class="hidden text-sm text-slate-300 md:block">Draft faster. Keep message clarity high.</p>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <section class="space-y-4">
+        <AvCard className="space-y-4 p-4 md:p-5">
+          <h2 class="text-base font-semibold text-white">Campaign basics</h2>
+          <div class="grid gap-3 md:grid-cols-2">
+            <AvInput label="Campaign name" placeholder="Q2 Lead Gen Push" x-model="$store.app.draft.campaign.campaignName" @input="$store.app.save()" />
+            <AvInput label="Brand / product" placeholder="Acme CRM" x-model="$store.app.draft.campaign.brandName" @input="$store.app.save()" />
+            <AvInput label="Audience" placeholder="Growth marketers at SMBs" x-model="$store.app.draft.campaign.audience" @input="$store.app.save()" />
+            <AvInput label="Objective" placeholder="Book product demos" x-model="$store.app.draft.campaign.objective" @input="$store.app.save()" />
+          </div>
+          <AvInput label="Offer / CTA" placeholder="Start your 14-day trial" x-model="$store.app.draft.campaign.offerCta" @input="$store.app.save()" />
+        </AvCard>
+
+        <AvCard className="space-y-4 p-4 md:p-5">
+          <h2 class="text-base font-semibold text-white">Platform and tone</h2>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div>
+              <p class="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">Platform</p>
+              <div class="flex flex-wrap gap-2">
+                <template x-for="platform in $store.app.platformOptions" :key="platform">
+                  <button
+                    type="button"
+                    class="rounded-full border px-3 py-1.5 text-sm transition"
+                    :class="$store.app.draft.selectedPlatform === platform ? 'border-sky-400 bg-sky-500/20 text-sky-100' : 'border-slate-700 text-slate-300 hover:border-slate-500'"
+                    @click="$store.app.draft.selectedPlatform = platform; $store.app.save()"
+                    x-text="platform"
+                  ></button>
+                </template>
+              </div>
+            </div>
+            <div>
+              <p class="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">Tone</p>
+              <div class="flex flex-wrap gap-2">
+                <template x-for="tone in $store.app.toneOptions" :key="tone">
+                  <button
+                    type="button"
+                    class="rounded-full border px-3 py-1.5 text-sm transition"
+                    :class="$store.app.draft.selectedTone === tone ? 'border-violet-400 bg-violet-500/20 text-violet-100' : 'border-slate-700 text-slate-300 hover:border-slate-500'"
+                    @click="$store.app.draft.selectedTone = tone; $store.app.save()"
+                    x-text="tone"
+                  ></button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </AvCard>
+
+        <AvCard className="space-y-4 p-4 md:p-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-semibold text-white">Copy variants</h2>
+            <div class="inline-flex rounded-lg border border-slate-700 p-1">
+              <template x-for="variant in $store.app.draft.variants" :key="variant.id">
+                <button
+                  type="button"
+                  class="rounded-md px-3 py-1 text-sm"
+                  :class="$store.app.draft.activeVariantId === variant.id ? 'bg-slate-100 text-slate-900' : 'text-slate-300 hover:text-white'"
+                  @click="$store.app.setVariant(variant.id)"
+                  x-text="variant.label"
+                ></button>
+              </template>
+            </div>
+          </div>
+
+          <div class="grid gap-3">
+            <AvInput label="Primary headline" placeholder="Get More Qualified Leads Fast" x-model="$store.app.activeVariant.headline" @input="$store.app.save()" />
+            <AvInput label="Secondary headline (optional)" placeholder="Built for teams that move quickly" x-model="$store.app.activeVariant.secondaryHeadline" @input="$store.app.save()" />
+            <AvTextarea label="Main ad copy / body" placeholder="Describe the problem, value, and why now." rows={5} x-model="$store.app.activeVariant.body" @input="$store.app.save()" />
+            <AvInput label="Short CTA line" placeholder="Book your demo today." x-model="$store.app.activeVariant.cta" @input="$store.app.save()" />
+            <AvTextarea label="Notes / angle" placeholder="Any positioning angle, proof point, or offer framing." rows={3} x-model="$store.app.activeVariant.notes" @input="$store.app.save()" />
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <AvButton type="button" @click="$store.app.copyCurrentVariant()">Copy current variant</AvButton>
+            <AvButton type="button" variant="outline" @click="$store.app.copyFullSet()">Copy full campaign copy set</AvButton>
+            <AvButton type="button" variant="ghost" @click="$store.app.openResetConfirm()">Reset / new draft</AvButton>
+          </div>
+
+          <p class="text-sm text-emerald-300" x-show="$store.app.statusMessage" x-text="$store.app.statusMessage"></p>
+        </AvCard>
+      </section>
+
+      <aside>
+        <AvCard className="sticky top-4 space-y-4 p-4 md:p-5">
+          <h2 class="text-base font-semibold text-white">Live ad preview</h2>
+          <div class="space-y-3 rounded-xl border border-slate-700/80 bg-slate-900/60 p-4">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-slate-400">Campaign</p>
+              <p class="text-lg font-semibold text-white" x-text="$store.app.draft.campaign.campaignName || 'Untitled campaign'"></p>
+            </div>
+            <p class="text-sm text-slate-300" x-text="$store.app.draft.campaign.brandName || 'Brand / product not specified'"></p>
+            <p class="text-xs text-slate-400">
+              <span x-text="$store.app.draft.campaign.audience || 'Audience pending'"></span>
+              ·
+              <span x-text="$store.app.draft.selectedPlatform"></span>
+              ·
+              <span x-text="$store.app.draft.campaign.objective || 'Objective pending'"></span>
+            </p>
+
+            <div class="rounded-lg border border-slate-700 bg-slate-950/80 p-3">
+              <p class="mb-2 text-xs uppercase tracking-wider text-slate-400" x-text="$store.app.activeVariant.label"></p>
+              <h3 class="text-xl font-semibold leading-tight text-white" x-text="$store.app.activeVariant.headline || 'Primary headline'"></h3>
+              <p class="mt-1 text-sm text-slate-300" x-show="$store.app.activeVariant.secondaryHeadline" x-text="$store.app.activeVariant.secondaryHeadline"></p>
+              <p class="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-200" x-text="$store.app.activeVariant.body || 'Main ad copy appears here as you draft.'"></p>
+              <p class="mt-3 font-medium text-sky-300" x-text="$store.app.activeVariant.cta || $store.app.draft.campaign.offerCta || 'CTA line'"></p>
+              <p class="mt-3 text-xs italic text-slate-400" x-show="$store.app.activeVariant.notes" x-text="$store.app.activeVariant.notes"></p>
+            </div>
+          </div>
+        </AvCard>
+      </aside>
+    </div>
+
+    <div
+      x-show="$store.app.resetConfirmOpen"
+      class="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/70 p-4"
+      x-transition
+    >
+      <AvCard className="w-full max-w-md space-y-4 p-5">
+        <h3 class="text-lg font-semibold text-white">Start a new draft?</h3>
+        <p class="text-sm text-slate-300">This clears campaign details and all variant copy in local draft storage.</p>
+        <div class="flex justify-end gap-2">
+          <AvButton type="button" variant="ghost" @click="$store.app.cancelReset()">Cancel</AvButton>
+          <AvButton type="button" variant="outline" @click="$store.app.resetDraft()">Yes, reset draft</AvButton>
+        </div>
+      </AvCard>
+    </div>
+  </main>
+</AppShell>
