@@ -44,7 +44,7 @@ export interface AdDraft {
 export function createDefaultVariants(): AdVariant[] {
   return ["A", "B", "C"].map((id) => ({
     id: id as VariantId,
-    label: `Variant ${id}`,
+    label: `Variant ${id}` as `Variant ${VariantId}`,
     headline: "",
     secondaryHeadline: "",
     body: "",

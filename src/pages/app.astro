@@ -1,143 +1,241 @@
 ---
 import AppShell from "../layouts/AppShell.astro";
-import { AvButton, AvCard, AvInput, AvTextarea } from "@ansiversa/components";
-import { appMeta } from "../app.meta";
+import { AvButton, AvCard, AvContainer } from "@ansiversa/components";
+import {
+  AD_COPY_CHANNELS,
+  AD_COPY_STATUSES,
+  archiveAdCopyForUser,
+  createAdCopyForUser,
+  listAdCopiesForUser,
+  parseAdCopyInput,
+  restoreAdCopyForUser,
+  summarizeAdCopiesForUser,
+  toggleAdCopyFavoriteForUser,
+} from "../lib/adCopies";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/");
+
+const searchParams = Astro.url.searchParams;
+const filters = {
+  search: searchParams.get("search") ?? "",
+  channel: (searchParams.get("channel") ?? "") as "" | (typeof AD_COPY_CHANNELS)[number],
+  status: (searchParams.get("status") ?? "") as "" | (typeof AD_COPY_STATUSES)[number],
+  favoriteOnly: searchParams.get("favorites") === "true",
+  archived: searchParams.get("archived") === "true",
+};
+
+let formError = "";
+let createValues = {
+  title: "",
+  campaignName: "",
+  channel: "general",
+  audience: "",
+  offer: "",
+  callToAction: "",
+  headline: "",
+  primaryText: "",
+  secondaryText: "",
+  notes: "",
+  status: "draft",
+};
+
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  const intent = String(formData.get("intent") ?? "");
+  const idRaw = String(formData.get("id") ?? "");
+
+  try {
+    if (intent === "create") {
+      createValues = {
+        title: String(formData.get("title") ?? ""),
+        campaignName: String(formData.get("campaignName") ?? ""),
+        channel: String(formData.get("channel") ?? "general"),
+        audience: String(formData.get("audience") ?? ""),
+        offer: String(formData.get("offer") ?? ""),
+        callToAction: String(formData.get("callToAction") ?? ""),
+        headline: String(formData.get("headline") ?? ""),
+        primaryText: String(formData.get("primaryText") ?? ""),
+        secondaryText: String(formData.get("secondaryText") ?? ""),
+        notes: String(formData.get("notes") ?? ""),
+        status: String(formData.get("status") ?? "draft"),
+      };
+
+      await createAdCopyForUser(
+        user.id,
+        parseAdCopyInput({
+          title: formData.get("title"),
+          campaignName: formData.get("campaignName"),
+          channel: formData.get("channel"),
+          audience: formData.get("audience"),
+          offer: formData.get("offer"),
+          callToAction: formData.get("callToAction"),
+          headline: formData.get("headline"),
+          primaryText: formData.get("primaryText"),
+          secondaryText: formData.get("secondaryText"),
+          notes: formData.get("notes"),
+          status: formData.get("status"),
+        }),
+      );
+
+      return Astro.redirect("/app");
+    }
+
+    const id = Number.parseInt(idRaw, 10);
+    if (!Number.isFinite(id)) {
+      return Astro.redirect("/app");
+    }
+
+    if (intent === "toggleFavorite") {
+      await toggleAdCopyFavoriteForUser(user.id, id);
+      return Astro.redirect("/app");
+    }
+    if (intent === "archive") {
+      await archiveAdCopyForUser(user.id, id);
+      return Astro.redirect("/app");
+    }
+    if (intent === "restore") {
+      await restoreAdCopyForUser(user.id, id);
+      return Astro.redirect("/app");
+    }
+  } catch (error) {
+    formError = error instanceof Error ? error.message : "Unable to save ad copy.";
+  }
+}
+
+const adCopies = await listAdCopiesForUser(user.id, filters);
+const summary = await summarizeAdCopiesForUser(user.id);
 ---
 
-<AppShell title={`${appMeta.name} – Ansiversa`} description={appMeta.description}>
-  <main x-data x-init="$store.app.init()" class="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
-    <div class="mb-6 flex items-center justify-between gap-3">
-      <div>
-        <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Marketing Draft Studio</p>
-        <h1 class="text-2xl font-semibold text-white md:text-3xl">{appMeta.name}</h1>
-      </div>
-      <p class="hidden text-sm text-slate-300 md:block">Draft faster. Keep message clarity high.</p>
-    </div>
-
-    <div class="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-      <section class="space-y-4">
-        <AvCard className="space-y-4 p-4 md:p-5">
-          <h2 class="text-base font-semibold text-white">Campaign basics</h2>
-          <div class="grid gap-3 md:grid-cols-2">
-            <AvInput label="Campaign name" placeholder="Q2 Lead Gen Push" x-model="$store.app.draft.campaign.campaignName" @input="$store.app.save()" />
-            <AvInput label="Brand / product" placeholder="Acme CRM" x-model="$store.app.draft.campaign.brandName" @input="$store.app.save()" />
-            <AvInput label="Audience" placeholder="Growth marketers at SMBs" x-model="$store.app.draft.campaign.audience" @input="$store.app.save()" />
-            <AvInput label="Objective" placeholder="Book product demos" x-model="$store.app.draft.campaign.objective" @input="$store.app.save()" />
-          </div>
-          <AvInput label="Offer / CTA" placeholder="Start your 14-day trial" x-model="$store.app.draft.campaign.offerCta" @input="$store.app.save()" />
-        </AvCard>
-
-        <AvCard className="space-y-4 p-4 md:p-5">
-          <h2 class="text-base font-semibold text-white">Platform and tone</h2>
-          <div class="grid gap-4 md:grid-cols-2">
-            <div>
-              <p class="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">Platform</p>
-              <div class="flex flex-wrap gap-2">
-                <template x-for="platform in $store.app.platformOptions" :key="platform">
-                  <button
-                    type="button"
-                    class="rounded-full border px-3 py-1.5 text-sm transition"
-                    :class="$store.app.draft.selectedPlatform === platform ? 'border-sky-400 bg-sky-500/20 text-sky-100' : 'border-slate-700 text-slate-300 hover:border-slate-500'"
-                    @click="$store.app.draft.selectedPlatform = platform; $store.app.save()"
-                    x-text="platform"
-                  ></button>
-                </template>
-              </div>
-            </div>
-            <div>
-              <p class="mb-2 text-xs font-medium uppercase tracking-wider text-slate-400">Tone</p>
-              <div class="flex flex-wrap gap-2">
-                <template x-for="tone in $store.app.toneOptions" :key="tone">
-                  <button
-                    type="button"
-                    class="rounded-full border px-3 py-1.5 text-sm transition"
-                    :class="$store.app.draft.selectedTone === tone ? 'border-violet-400 bg-violet-500/20 text-violet-100' : 'border-slate-700 text-slate-300 hover:border-slate-500'"
-                    @click="$store.app.draft.selectedTone = tone; $store.app.save()"
-                    x-text="tone"
-                  ></button>
-                </template>
-              </div>
-            </div>
-          </div>
-        </AvCard>
-
-        <AvCard className="space-y-4 p-4 md:p-5">
-          <div class="flex items-center justify-between">
-            <h2 class="text-base font-semibold text-white">Copy variants</h2>
-            <div class="inline-flex rounded-lg border border-slate-700 p-1">
-              <template x-for="variant in $store.app.draft.variants" :key="variant.id">
-                <button
-                  type="button"
-                  class="rounded-md px-3 py-1 text-sm"
-                  :class="$store.app.draft.activeVariantId === variant.id ? 'bg-slate-100 text-slate-900' : 'text-slate-300 hover:text-white'"
-                  @click="$store.app.setVariant(variant.id)"
-                  x-text="variant.label"
-                ></button>
-              </template>
-            </div>
-          </div>
-
-          <div class="grid gap-3">
-            <AvInput label="Primary headline" placeholder="Get More Qualified Leads Fast" x-model="$store.app.activeVariant.headline" @input="$store.app.save()" />
-            <AvInput label="Secondary headline (optional)" placeholder="Built for teams that move quickly" x-model="$store.app.activeVariant.secondaryHeadline" @input="$store.app.save()" />
-            <AvTextarea label="Main ad copy / body" placeholder="Describe the problem, value, and why now." rows={5} x-model="$store.app.activeVariant.body" @input="$store.app.save()" />
-            <AvInput label="Short CTA line" placeholder="Book your demo today." x-model="$store.app.activeVariant.cta" @input="$store.app.save()" />
-            <AvTextarea label="Notes / angle" placeholder="Any positioning angle, proof point, or offer framing." rows={3} x-model="$store.app.activeVariant.notes" @input="$store.app.save()" />
-          </div>
-
-          <div class="flex flex-wrap gap-2">
-            <AvButton type="button" @click="$store.app.copyCurrentVariant()">Copy current variant</AvButton>
-            <AvButton type="button" variant="outline" @click="$store.app.copyFullSet()">Copy full campaign copy set</AvButton>
-            <AvButton type="button" variant="ghost" @click="$store.app.openResetConfirm()">Reset / new draft</AvButton>
-          </div>
-
-          <p class="text-sm text-emerald-300" x-show="$store.app.statusMessage" x-text="$store.app.statusMessage"></p>
-        </AvCard>
-      </section>
-
-      <aside>
-        <AvCard className="sticky top-4 space-y-4 p-4 md:p-5">
-          <h2 class="text-base font-semibold text-white">Live ad preview</h2>
-          <div class="space-y-3 rounded-xl border border-slate-700/80 bg-slate-900/60 p-4">
-            <div>
-              <p class="text-xs uppercase tracking-wider text-slate-400">Campaign</p>
-              <p class="text-lg font-semibold text-white" x-text="$store.app.draft.campaign.campaignName || 'Untitled campaign'"></p>
-            </div>
-            <p class="text-sm text-slate-300" x-text="$store.app.draft.campaign.brandName || 'Brand / product not specified'"></p>
-            <p class="text-xs text-slate-400">
-              <span x-text="$store.app.draft.campaign.audience || 'Audience pending'"></span>
-              ·
-              <span x-text="$store.app.draft.selectedPlatform"></span>
-              ·
-              <span x-text="$store.app.draft.campaign.objective || 'Objective pending'"></span>
+<AppShell title="Ad Copy Workspace" description="Protected workspace for structured ad copy records.">
+  <main class="py-10">
+    <AvContainer>
+      <div class="av-auth-stack-lg">
+        <section class="flex flex-wrap items-end justify-between gap-4">
+          <div class="av-auth-stack-xs">
+            <p class="av-kicker">Protected workspace</p>
+            <h1 class="av-section-title">Your ad copy library</h1>
+            <p class="av-text-soft">
+              Create structured copy records, keep strong options close, and revisit older campaign drafts without losing them.
             </p>
-
-            <div class="rounded-lg border border-slate-700 bg-slate-950/80 p-3">
-              <p class="mb-2 text-xs uppercase tracking-wider text-slate-400" x-text="$store.app.activeVariant.label"></p>
-              <h3 class="text-xl font-semibold leading-tight text-white" x-text="$store.app.activeVariant.headline || 'Primary headline'"></h3>
-              <p class="mt-1 text-sm text-slate-300" x-show="$store.app.activeVariant.secondaryHeadline" x-text="$store.app.activeVariant.secondaryHeadline"></p>
-              <p class="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-200" x-text="$store.app.activeVariant.body || 'Main ad copy appears here as you draft.'"></p>
-              <p class="mt-3 font-medium text-sky-300" x-text="$store.app.activeVariant.cta || $store.app.draft.campaign.offerCta || 'CTA line'"></p>
-              <p class="mt-3 text-xs italic text-slate-400" x-show="$store.app.activeVariant.notes" x-text="$store.app.activeVariant.notes"></p>
-            </div>
           </div>
-        </AvCard>
-      </aside>
-    </div>
+          <AvButton href="#create">Create Record</AvButton>
+        </section>
 
-    <div
-      x-show="$store.app.resetConfirmOpen"
-      class="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/70 p-4"
-      x-transition
-    >
-      <AvCard className="w-full max-w-md space-y-4 p-5">
-        <h3 class="text-lg font-semibold text-white">Start a new draft?</h3>
-        <p class="text-sm text-slate-300">This clears campaign details and all variant copy in local draft storage.</p>
-        <div class="flex justify-end gap-2">
-          <AvButton type="button" variant="ghost" @click="$store.app.cancelReset()">Cancel</AvButton>
-          <AvButton type="button" variant="outline" @click="$store.app.resetDraft()">Yes, reset draft</AvButton>
-        </div>
-      </AvCard>
-    </div>
+        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <AvCard variant="soft"><p class="av-kicker">Total</p><h2 class="av-card-heading">{summary.total}</h2></AvCard>
+          <AvCard variant="soft"><p class="av-kicker">Active</p><h2 class="av-card-heading">{summary.active}</h2></AvCard>
+          <AvCard variant="soft"><p class="av-kicker">Favorites</p><h2 class="av-card-heading">{summary.favorites}</h2></AvCard>
+          <AvCard variant="soft"><p class="av-kicker">Archived</p><h2 class="av-card-heading">{summary.archived}</h2></AvCard>
+        </section>
+
+        <section class="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <AvCard variant="soft" className="av-auth-stack-md">
+            <div class="av-section-header">
+              <h2 class="av-section-title">Browse your records</h2>
+              <p class="av-section-lead">Search and filter the personal copy library without adding analytics or platform complexity.</p>
+            </div>
+
+            <form method="GET" class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <input type="search" name="search" value={filters.search} placeholder="Search title, campaign, headline" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white xl:col-span-2" />
+              <select name="channel" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                <option value="">All channels</option>
+                {AD_COPY_CHANNELS.map((channel) => <option value={channel} selected={filters.channel === channel}>{channel}</option>)}
+              </select>
+              <select name="status" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                <option value="">All statuses</option>
+                {AD_COPY_STATUSES.map((status) => <option value={status} selected={filters.status === status}>{status}</option>)}
+              </select>
+              <select name="favorites" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                <option value="false" selected={!filters.favoriteOnly}>All records</option>
+                <option value="true" selected={filters.favoriteOnly}>Favorites only</option>
+              </select>
+              <select name="archived" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                <option value="false" selected={!filters.archived}>Active view</option>
+                <option value="true" selected={filters.archived}>Archived view</option>
+              </select>
+              <div class="flex flex-wrap gap-2 xl:col-span-5">
+                <button class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-950">Apply Filters</button>
+                <a href="/app" class="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-200">Reset</a>
+              </div>
+            </form>
+
+            <div class="space-y-3">
+              {adCopies.length ? adCopies.map((record) => (
+                <article class="rounded-xl border border-white/10 bg-slate-950/70 p-4">
+                  <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="av-auth-stack-xxs">
+                      <a href={`/app/copies/${record.id}`} class="text-lg font-medium text-white hover:text-emerald-300">{record.title}</a>
+                      <p class="text-sm text-slate-400">
+                        {[record.campaignName, record.channel, record.status].filter(Boolean).join(" · ")}
+                      </p>
+                      <p class="text-xs text-slate-500">Updated {new Date(record.updatedAt).toLocaleDateString()}</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      {record.isFavorite ? <span class="rounded-full border border-amber-300/30 px-2 py-1 text-xs text-amber-200">Favorite</span> : null}
+                      {record.isArchived ? <span class="rounded-full border border-white/15 px-2 py-1 text-xs text-slate-300">Archived</span> : null}
+                    </div>
+                  </div>
+                  <p class="mt-3 text-sm text-slate-300">{record.headline ?? record.primaryText ?? "No headline or primary copy yet."}</p>
+                  <div class="mt-4 flex flex-wrap gap-2">
+                    <form method="POST">
+                      <input type="hidden" name="intent" value="toggleFavorite" />
+                      <input type="hidden" name="id" value={record.id} />
+                      <button type="submit" class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">{record.isFavorite ? "Unfavorite" : "Favorite"}</button>
+                    </form>
+                    {!record.isArchived ? (
+                      <form method="POST">
+                        <input type="hidden" name="intent" value="archive" />
+                        <input type="hidden" name="id" value={record.id} />
+                        <button type="submit" class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">Archive</button>
+                      </form>
+                    ) : (
+                      <form method="POST">
+                        <input type="hidden" name="intent" value="restore" />
+                        <input type="hidden" name="id" value={record.id} />
+                        <button type="submit" class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">Restore</button>
+                      </form>
+                    )}
+                    <a href={`/app/copies/${record.id}`} class="rounded-lg border border-emerald-400/25 px-3 py-1.5 text-xs text-emerald-200">Open Detail</a>
+                  </div>
+                </article>
+              )) : (
+                <div class="rounded-xl border border-dashed border-white/15 p-8 text-center">
+                  <p class="text-white">No ad copy records match the current filters.</p>
+                  <p class="mt-2 text-sm text-slate-400">This is a personal ad copy workspace. Start by creating one structured record. No AI generation is implied here.</p>
+                </div>
+              )}
+            </div>
+          </AvCard>
+
+          <AvCard id="create" className="av-auth-stack-md">
+            <div class="av-section-header">
+              <h2 class="av-section-title">Create a record</h2>
+              <p class="av-section-lead">Save campaign context and draft copy in one place.</p>
+            </div>
+            {formError ? <p class="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">{formError}</p> : null}
+            <form method="POST" class="av-auth-stack-sm">
+              <input type="hidden" name="intent" value="create" />
+              <input required name="title" value={createValues.title} placeholder="Title" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <input name="campaignName" value={createValues.campaignName} placeholder="Campaign or product" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <select name="channel" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                {AD_COPY_CHANNELS.map((channel) => <option value={channel} selected={createValues.channel === channel}>{channel}</option>)}
+              </select>
+              <input name="audience" value={createValues.audience} placeholder="Audience" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <input name="offer" value={createValues.offer} placeholder="Offer" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <input name="callToAction" value={createValues.callToAction} placeholder="Call to action" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <input name="headline" value={createValues.headline} placeholder="Headline" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <textarea name="primaryText" rows="5" placeholder="Primary copy" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{createValues.primaryText}</textarea>
+              <textarea name="secondaryText" rows="3" placeholder="Secondary copy" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{createValues.secondaryText}</textarea>
+              <textarea name="notes" rows="3" placeholder="Notes" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{createValues.notes}</textarea>
+              <select name="status" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                {AD_COPY_STATUSES.map((status) => <option value={status} selected={createValues.status === status}>{status}</option>)}
+              </select>
+              <button class="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-slate-950">Save record</button>
+            </form>
+          </AvCard>
+        </section>
+      </div>
+    </AvContainer>
   </main>
 </AppShell>

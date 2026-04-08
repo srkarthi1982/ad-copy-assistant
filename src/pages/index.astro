@@ -1,37 +1,154 @@
 ---
 import AppShell from "../layouts/AppShell.astro";
-import { AvContainer, AvButton, AvCard } from "@ansiversa/components";
-import { appMeta } from "../app.meta";
+import LandingPageStandard from "../components/landing/LandingPageStandard.astro";
+import type { LandingPageContent } from "../lib/landing";
+import { buildRootRedirect } from "../lib/redirects";
+
+const rootAppUrl = Astro.locals.rootAppUrl ?? "https://ansiversa.com";
+const appUrl = new URL("/app", Astro.url).toString();
+const startHref = Astro.locals.isAuthenticated ? "/app" : buildRootRedirect(rootAppUrl, "/login", appUrl);
+
+const landingContent: LandingPageContent = {
+  categoryLabel: "Writing Workspace",
+  appLabel: "Authenticated DB-backed workspace",
+  title: "Keep your ad copy organized instead of losing strong campaign drafts between launches.",
+  subtitle:
+    "Create structured ad copy records, revise them over time, favorite the strongest options, archive older work, and come back when a campaign needs a better starting point.",
+  heroBullets: [
+    "Store campaign context, channel, headline, primary copy, CTA, and notes inside one personal record",
+    "Use search and simple filters to find active, archived, or favorite copy faster",
+    "Open the full detail page when you need the entire draft instead of a list summary",
+  ],
+  primaryCta: {
+    label: Astro.locals.isAuthenticated ? "Open Workspace" : "Sign in to Open",
+    href: startHref,
+  },
+  secondaryCta: {
+    label: "See Workflow",
+    href: "#workflow",
+    variant: "ghost",
+  },
+  heroNote:
+    "Current V1 is a manual ad copy workspace. It does not generate copy with AI, publish ads, or track campaign performance.",
+  heroPanel: {
+    eyebrow: "Copy flow",
+    title: "Create → Refine → Reuse",
+    steps: [
+      "1. Save a record with campaign and channel context",
+      "2. Edit, favorite, or archive it as the campaign evolves",
+      "3. Return later when you need a stronger starting point",
+    ],
+    meta: [
+      { value: "DB", label: "Persistence" },
+      { value: "Per-user", label: "Ownership" },
+    ],
+  },
+  features: {
+    title: "What Ad Copy Assistant gives you in V1",
+    lead:
+      "The value is in keeping manual ad copy work structured and reusable, not in pretending to be a generator, publisher, or analytics platform.",
+    items: [
+      {
+        title: "Structured copy records",
+        description:
+          "Keep title, campaign, channel, audience, offer, headline, primary text, supporting copy, CTA, and notes in one record.",
+      },
+      {
+        title: "Favorite and archive states",
+        description:
+          "Highlight strong records worth reusing and move older work out of the active list without deleting it.",
+      },
+      {
+        title: "Detail route for full review",
+        description:
+          "Open a dedicated detail page when the full draft needs focused editing and not just a short workspace summary.",
+      },
+      {
+        title: "Simple retrieval filters",
+        description:
+          "Search and filter by channel, status, favorites, and archived state to find the right copy faster.",
+      },
+    ],
+  },
+  pillars: {
+    title: "Why this works better than scattered campaign notes",
+    lead:
+      "The product stays intentionally narrow: one personal workspace that keeps strong ad copy close and older drafts organized instead of buried across docs and messages.",
+    items: [
+      {
+        title: "Truthful product boundary",
+        description:
+          "This is a manual drafting and organization tool, not an AI ad generator, ad publishing platform, or performance dashboard.",
+      },
+      {
+        title: "Personal ownership",
+        description:
+          "Protected routes and owner-scoped records keep each user’s draft library separate and safe to revise.",
+      },
+      {
+        title: "Reusable campaign memory",
+        description:
+          "Search, favorites, and archive controls make it easier to return to older copy when a campaign needs a second pass.",
+      },
+      {
+        title: "Safe state changes",
+        description:
+          "Create, update, favorite, archive, and restore flows stay predictable without hard-delete risk in V1.",
+      },
+    ],
+  },
+  workflow: {
+    eyebrow: "How it works",
+    title: "Build an ad copy library you can keep returning to",
+    lead:
+      "The workflow is built around capturing useful drafts once, revising them when needed, and keeping the workspace clear over time.",
+    steps: [
+      {
+        title: "Sign in and create a record",
+        description:
+          "Open the protected workspace and save the campaign context, channel, and draft copy you want to keep.",
+      },
+      {
+        title: "Refine the draft over time",
+        description:
+          "Use the detail page to edit the full copy, favorite the strongest records, or archive older ones.",
+      },
+      {
+        title: "Search and reopen later",
+        description:
+          "Return when you need to reuse earlier work and filter the library to find the strongest starting point quickly.",
+      },
+    ],
+  },
+  showcase: {
+    eyebrow: "Current product shape",
+    title: "Built for structured ad copy drafting, not automated campaign systems",
+    description:
+      "The landing copy stays aligned to the V1 scope: Ad Copy Assistant is a protected personal workspace for storing, editing, favoriting, archiving, and revisiting structured ad copy records.",
+    bullets: [
+      "Good fit for solo marketers, founders, and creators preparing campaign drafts before publishing elsewhere",
+      "Centered on manual writing, safe organization, and reusable campaign copy memory",
+    ],
+    calloutLabel: "Freeze truth",
+    calloutValue: "Manual ad copy workspace",
+  },
+  finalCta: {
+    title: "Start building an ad copy library you can actually reuse",
+    description:
+      "Open the workspace, save the strong drafts worth keeping, and make the next campaign easier to start from a better base.",
+    primaryCta: {
+      label: Astro.locals.isAuthenticated ? "Open Workspace" : "Sign in to Open",
+      href: startHref,
+    },
+    secondaryCta: {
+      label: "Review Features",
+      href: "#features",
+      variant: "ghost",
+    },
+  },
+};
 ---
 
-<AppShell title={`${appMeta.name} – Ansiversa`} description={appMeta.description}>
-  <section class="av-hero">
-    <AvContainer size="narrow" className="av-hero__content--narrow">
-      <div class="av-hero__content">
-        <div class="av-kicker">
-          <span>Marketing · Ansiversa Mini App</span>
-        </div>
-        <h1 class="av-gradient-text">{appMeta.name}</h1>
-        <p>Draft premium, campaign-ready ad copy in minutes with structured A/B/C variants.</p>
-      </div>
-      <div class="av-cta-row">
-        <AvButton href="/app">Open app</AvButton>
-      </div>
-    </AvContainer>
-  </section>
-
-  <section class="av-section">
-    <AvContainer size="narrow">
-      <AvCard className="space-y-4 p-6">
-        <h2 class="av-section-title">What you can do in V1</h2>
-        <ul class="space-y-2 text-slate-300 list-disc list-inside">
-          <li>Capture campaign basics, platform context, and tone.</li>
-          <li>Edit three polished ad variants with instant switching.</li>
-          <li>Review a live structured preview while drafting.</li>
-          <li>Copy one variant or the full campaign copy set.</li>
-          <li>Keep progress locally and reset safely when starting fresh.</li>
-        </ul>
-      </AvCard>
-    </AvContainer>
-  </section>
+<AppShell title="Ad Copy Assistant — Ansiversa" description="A protected personal workspace for drafting and organizing structured ad copy.">
+  <LandingPageStandard content={landingContent} />
 </AppShell>

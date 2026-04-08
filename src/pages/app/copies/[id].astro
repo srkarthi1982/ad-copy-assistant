@@ -1,0 +1,159 @@
+---
+import AppShell from "../../../layouts/AppShell.astro";
+import { AvButton, AvCard, AvContainer } from "@ansiversa/components";
+import {
+  AD_COPY_CHANNELS,
+  AD_COPY_STATUSES,
+  archiveAdCopyForUser,
+  getAdCopyDetailForUser,
+  parseAdCopyInput,
+  restoreAdCopyForUser,
+  toggleAdCopyFavoriteForUser,
+  updateAdCopyForUser,
+} from "../../../lib/adCopies";
+import { ActionError } from "astro:actions";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/");
+
+const id = Number.parseInt(Astro.params.id ?? "", 10);
+if (!Number.isFinite(id)) {
+  return Astro.redirect("/app");
+}
+
+let saveError = "";
+
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  const intent = String(formData.get("intent") ?? "");
+
+  try {
+    if (intent === "update") {
+      const input = parseAdCopyInput({
+        title: formData.get("title"),
+        campaignName: formData.get("campaignName"),
+        channel: formData.get("channel"),
+        audience: formData.get("audience"),
+        offer: formData.get("offer"),
+        callToAction: formData.get("callToAction"),
+        headline: formData.get("headline"),
+        primaryText: formData.get("primaryText"),
+        secondaryText: formData.get("secondaryText"),
+        notes: formData.get("notes"),
+        status: formData.get("status"),
+      });
+      await updateAdCopyForUser(user.id, id, input);
+      return Astro.redirect(`/app/copies/${id}`);
+    }
+
+    if (intent === "toggleFavorite") {
+      await toggleAdCopyFavoriteForUser(user.id, id);
+      return Astro.redirect(`/app/copies/${id}`);
+    }
+
+    if (intent === "archive") {
+      await archiveAdCopyForUser(user.id, id);
+      return Astro.redirect(`/app/copies/${id}`);
+    }
+
+    if (intent === "restore") {
+      await restoreAdCopyForUser(user.id, id);
+      return Astro.redirect(`/app/copies/${id}`);
+    }
+  } catch (error) {
+    if (error instanceof ActionError && error.code === "NOT_FOUND") {
+      return Astro.redirect("/app");
+    }
+    saveError = error instanceof Error ? error.message : "Unable to update this record.";
+  }
+}
+
+let adCopy;
+try {
+  adCopy = await getAdCopyDetailForUser(user.id, id);
+} catch {
+  return Astro.redirect("/app");
+}
+---
+
+<AppShell title={`${adCopy.title} — Ad Copy Assistant`} description="Ad copy detail record">
+  <main class="py-10">
+    <AvContainer>
+      <div class="av-auth-stack-lg">
+        <section class="flex flex-wrap items-end justify-between gap-4">
+          <div class="av-auth-stack-xs">
+            <p class="av-kicker">Ad copy detail</p>
+            <h1 class="av-section-title">{adCopy.title}</h1>
+            <p class="av-text-soft">
+              {[adCopy.campaignName, adCopy.channel, adCopy.status].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <AvButton href="/app" variant="ghost">Back to Workspace</AvButton>
+          </div>
+        </section>
+
+        <section class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <AvCard className="av-auth-stack-md">
+            <div class="av-section-header">
+              <h2 class="av-section-title">Edit record</h2>
+              <p class="av-section-lead">Revise the full ad copy without losing the campaign structure.</p>
+            </div>
+            {saveError ? <p class="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">{saveError}</p> : null}
+            <form method="POST" class="av-auth-stack-sm">
+              <input type="hidden" name="intent" value="update" />
+              <input required name="title" value={adCopy.title} placeholder="Title" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <input name="campaignName" value={adCopy.campaignName ?? ""} placeholder="Campaign or product" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <select name="channel" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                {AD_COPY_CHANNELS.map((channel) => <option value={channel} selected={adCopy.channel === channel}>{channel}</option>)}
+              </select>
+              <input name="audience" value={adCopy.audience ?? ""} placeholder="Audience" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <input name="offer" value={adCopy.offer ?? ""} placeholder="Offer" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <input name="callToAction" value={adCopy.callToAction ?? ""} placeholder="Call to action" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <input name="headline" value={adCopy.headline ?? ""} placeholder="Headline" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <textarea name="primaryText" rows="5" placeholder="Primary copy" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{adCopy.primaryText ?? ""}</textarea>
+              <textarea name="secondaryText" rows="3" placeholder="Secondary copy" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{adCopy.secondaryText ?? ""}</textarea>
+              <textarea name="notes" rows="3" placeholder="Notes" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{adCopy.notes ?? ""}</textarea>
+              <select name="status" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
+                {AD_COPY_STATUSES.map((status) => <option value={status} selected={adCopy.status === status}>{status}</option>)}
+              </select>
+              <button class="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-slate-950">Save changes</button>
+            </form>
+          </AvCard>
+
+          <div class="av-auth-stack-md">
+            <AvCard variant="soft" className="av-auth-stack-sm">
+              <p class="av-kicker">Record state</p>
+              <h2 class="av-card-heading">{adCopy.isFavorite ? "Favorited" : "Not favorited"}</h2>
+              <p class="av-text-soft">Updated {new Date(adCopy.updatedAt).toLocaleString()}</p>
+              <div class="flex flex-wrap gap-2">
+                <form method="POST">
+                  <input type="hidden" name="intent" value="toggleFavorite" />
+                  <button class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">{adCopy.isFavorite ? "Unfavorite" : "Favorite"}</button>
+                </form>
+                {!adCopy.isArchived ? (
+                  <form method="POST">
+                    <input type="hidden" name="intent" value="archive" />
+                    <button class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">Archive</button>
+                  </form>
+                ) : (
+                  <form method="POST">
+                    <input type="hidden" name="intent" value="restore" />
+                    <button class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">Restore</button>
+                  </form>
+                )}
+              </div>
+            </AvCard>
+
+            <AvCard variant="soft" className="av-auth-stack-sm">
+              <p class="av-kicker">Draft preview</p>
+              <h2 class="av-card-heading">{adCopy.headline ?? "No headline yet"}</h2>
+              <p class="av-text-soft">{adCopy.primaryText ?? "No primary copy saved yet."}</p>
+              {adCopy.secondaryText ? <p class="av-text-soft">{adCopy.secondaryText}</p> : null}
+            </AvCard>
+          </div>
+        </section>
+      </div>
+    </AvContainer>
+  </main>
+</AppShell>

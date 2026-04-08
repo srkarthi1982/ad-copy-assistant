@@ -1,7 +1,8 @@
-import { defineDb } from 'astro:db';
-import { tables } from './tables';
+import { defineDb } from "astro:db";
+import { AdCopies } from "./tables";
 
-// https://astro.build/db/config
 export default defineDb({
-  tables,
+  tables: {
+    AdCopies,
+  },
 });

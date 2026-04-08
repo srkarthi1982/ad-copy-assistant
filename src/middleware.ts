@@ -4,7 +4,7 @@ import { SESSION_COOKIE_NAME, verifySessionToken } from "./lib/auth";
 const COOKIE_DOMAIN = import.meta.env.ANSIVERSA_COOKIE_DOMAIN ?? "ansiversa.com";
 const ROOT_APP_URL = import.meta.env.PUBLIC_ROOT_APP_URL ?? `https://${COOKIE_DOMAIN}`;
 
-const PUBLIC_PATHS = new Set(["/", "/app"]);
+const PUBLIC_PATHS = new Set(["/"]);
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { cookies, locals, url } = context;
