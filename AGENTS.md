@@ -25,6 +25,7 @@ MANDATORY: After completing each task, update this repo’s AGENTS.md Task Log (
 - Review this repo's existing AGENTS.md Task Log history before making changes.
 
 ## Task Log (Recent)
+- 2026-04-08 Completed spec-driven verification for Ad Copy Assistant V1 against `docs/app-spec.md`: verified landing/auth/workspace/detail/update/favorite/archive/search/filter behavior against the live dev server with signed session cookies, confirmed `db:push` and `build`, added repo-local `@astrojs/check` + `typescript` devDependencies so `npm run typecheck` runs non-interactively, and recorded one remaining spec mismatch around storing multiple draft variants inside a single record.
 - 2026-04-08 Bootstrapped Ad Copy Assistant from the approved app-starter baseline and implemented the V1 foundation: added the `AdCopies` Astro DB schema, owner-safe create/list/detail/update/favorite/archive/restore helpers, protected workspace and detail routes, truthful landing page, and saved product spec alignment for future freeze verification.
 - 2026-04-08 Added `docs/app-spec.md` from Astra’s V1 product definition for Ad Copy Assistant and documented the intended protected DB-backed manual drafting scope for future implementation alignment.
 - Keep newest first; include date and short summary.
