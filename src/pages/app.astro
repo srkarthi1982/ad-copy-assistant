@@ -32,10 +32,6 @@ let createValues = {
   channel: "general",
   audience: "",
   offer: "",
-  callToAction: "",
-  headline: "",
-  primaryText: "",
-  secondaryText: "",
   notes: "",
   status: "draft",
 };
@@ -53,15 +49,12 @@ if (Astro.request.method === "POST") {
         channel: String(formData.get("channel") ?? "general"),
         audience: String(formData.get("audience") ?? ""),
         offer: String(formData.get("offer") ?? ""),
-        callToAction: String(formData.get("callToAction") ?? ""),
-        headline: String(formData.get("headline") ?? ""),
-        primaryText: String(formData.get("primaryText") ?? ""),
-        secondaryText: String(formData.get("secondaryText") ?? ""),
         notes: String(formData.get("notes") ?? ""),
         status: String(formData.get("status") ?? "draft"),
       };
 
-      await createAdCopyForUser(
+      const createdRecordId = (
+        await createAdCopyForUser(
         user.id,
         parseAdCopyInput({
           title: formData.get("title"),
@@ -69,16 +62,13 @@ if (Astro.request.method === "POST") {
           channel: formData.get("channel"),
           audience: formData.get("audience"),
           offer: formData.get("offer"),
-          callToAction: formData.get("callToAction"),
-          headline: formData.get("headline"),
-          primaryText: formData.get("primaryText"),
-          secondaryText: formData.get("secondaryText"),
           notes: formData.get("notes"),
           status: formData.get("status"),
         }),
-      );
+        )
+      ).id;
 
-      return Astro.redirect("/app");
+      return Astro.redirect(`/app/copies/${createdRecordId}`);
     }
 
     const id = Number.parseInt(idRaw, 10);
@@ -116,7 +106,7 @@ const summary = await summarizeAdCopiesForUser(user.id);
             <p class="av-kicker">Protected workspace</p>
             <h1 class="av-section-title">Your ad copy library</h1>
             <p class="av-text-soft">
-              Create structured copy records, keep strong options close, and revisit older campaign drafts without losing them.
+              Create campaign shells, add multiple variants inside each record, and keep the strongest copy easy to revisit.
             </p>
           </div>
           <AvButton href="#create">Create Record</AvButton>
@@ -133,11 +123,11 @@ const summary = await summarizeAdCopiesForUser(user.id);
           <AvCard variant="soft" className="av-auth-stack-md">
             <div class="av-section-header">
               <h2 class="av-section-title">Browse your records</h2>
-              <p class="av-section-lead">Search and filter the personal copy library without adding analytics or platform complexity.</p>
+              <p class="av-section-lead">Search campaign context and saved variant copy without turning the workspace into analytics software.</p>
             </div>
 
             <form method="GET" class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-              <input type="search" name="search" value={filters.search} placeholder="Search title, campaign, headline" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white xl:col-span-2" />
+              <input type="search" name="search" value={filters.search} placeholder="Search title, campaign, headline, variant copy" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white xl:col-span-2" />
               <select name="channel" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
                 <option value="">All channels</option>
                 {AD_COPY_CHANNELS.map((channel) => <option value={channel} selected={filters.channel === channel}>{channel}</option>)}
@@ -169,19 +159,26 @@ const summary = await summarizeAdCopiesForUser(user.id);
                       <p class="text-sm text-slate-400">
                         {[record.campaignName, record.channel, record.status].filter(Boolean).join(" · ")}
                       </p>
-                      <p class="text-xs text-slate-500">Updated {new Date(record.updatedAt).toLocaleDateString()}</p>
+                      <p class="text-xs text-slate-500">
+                        {record.variantCount} variant{record.variantCount === 1 ? "" : "s"} · Updated {new Date(record.updatedAt).toLocaleDateString()}
+                      </p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
-                      {record.isFavorite ? <span class="rounded-full border border-amber-300/30 px-2 py-1 text-xs text-amber-200">Favorite</span> : null}
+                      {record.isFavorite ? <span class="rounded-full border border-amber-300/30 px-2 py-1 text-xs text-amber-200">Record favorite</span> : null}
+                      {record.hasFavoriteVariant ? <span class="rounded-full border border-emerald-300/30 px-2 py-1 text-xs text-emerald-200">Favorite variant</span> : null}
                       {record.isArchived ? <span class="rounded-full border border-white/15 px-2 py-1 text-xs text-slate-300">Archived</span> : null}
                     </div>
                   </div>
-                  <p class="mt-3 text-sm text-slate-300">{record.headline ?? record.primaryText ?? "No headline or primary copy yet."}</p>
+                  <p class="mt-3 text-sm text-slate-300">
+                    {record.previewVariant
+                      ? `${record.previewVariant.label}: ${record.previewVariant.headline ?? record.previewVariant.primaryText ?? "Saved variant"}`
+                      : "No variants saved yet. Open the detail page to add the first one."}
+                  </p>
                   <div class="mt-4 flex flex-wrap gap-2">
                     <form method="POST">
                       <input type="hidden" name="intent" value="toggleFavorite" />
                       <input type="hidden" name="id" value={record.id} />
-                      <button type="submit" class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">{record.isFavorite ? "Unfavorite" : "Favorite"}</button>
+                      <button type="submit" class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">{record.isFavorite ? "Unfavorite Record" : "Favorite Record"}</button>
                     </form>
                     {!record.isArchived ? (
                       <form method="POST">
@@ -202,7 +199,7 @@ const summary = await summarizeAdCopiesForUser(user.id);
               )) : (
                 <div class="rounded-xl border border-dashed border-white/15 p-8 text-center">
                   <p class="text-white">No ad copy records match the current filters.</p>
-                  <p class="mt-2 text-sm text-slate-400">This is a personal ad copy workspace. Start by creating one structured record. No AI generation is implied here.</p>
+                  <p class="mt-2 text-sm text-slate-400">This is a personal ad copy workspace. Start by creating one record, then add variants on the detail page. No AI generation is implied here.</p>
                 </div>
               )}
             </div>
@@ -211,7 +208,7 @@ const summary = await summarizeAdCopiesForUser(user.id);
           <AvCard id="create" className="av-auth-stack-md">
             <div class="av-section-header">
               <h2 class="av-section-title">Create a record</h2>
-              <p class="av-section-lead">Save campaign context and draft copy in one place.</p>
+              <p class="av-section-lead">Start with the campaign context shell, then add one or more variants on the detail page.</p>
             </div>
             {formError ? <p class="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">{formError}</p> : null}
             <form method="POST" class="av-auth-stack-sm">
@@ -223,15 +220,11 @@ const summary = await summarizeAdCopiesForUser(user.id);
               </select>
               <input name="audience" value={createValues.audience} placeholder="Audience" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
               <input name="offer" value={createValues.offer} placeholder="Offer" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
-              <input name="callToAction" value={createValues.callToAction} placeholder="Call to action" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
-              <input name="headline" value={createValues.headline} placeholder="Headline" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
-              <textarea name="primaryText" rows="5" placeholder="Primary copy" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{createValues.primaryText}</textarea>
-              <textarea name="secondaryText" rows="3" placeholder="Secondary copy" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{createValues.secondaryText}</textarea>
-              <textarea name="notes" rows="3" placeholder="Notes" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{createValues.notes}</textarea>
+              <textarea name="notes" rows="3" placeholder="Record notes" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{createValues.notes}</textarea>
               <select name="status" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
                 {AD_COPY_STATUSES.map((status) => <option value={status} selected={createValues.status === status}>{status}</option>)}
               </select>
-              <button class="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-slate-950">Save record</button>
+              <button class="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-slate-950">Create record</button>
             </form>
           </AvCard>
         </section>

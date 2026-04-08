@@ -20,6 +20,7 @@ export const AdCopies = defineTable({
     }),
     audience: column.text({ optional: true }),
     offer: column.text({ optional: true }),
+    // Deprecated legacy copy fields kept temporarily for safe migration compatibility.
     callToAction: column.text({ optional: true }),
     headline: column.text({ optional: true }),
     primaryText: column.text({ optional: true }),
@@ -41,6 +42,32 @@ export const AdCopies = defineTable({
   ],
 });
 
+export const AdCopyVariants = defineTable({
+  columns: {
+    id: column.number({ primaryKey: true, autoIncrement: true }),
+    adCopyId: column.number(),
+    userId: column.text(),
+    label: column.text(),
+    headline: column.text({ optional: true }),
+    primaryText: column.text({ optional: true }),
+    secondaryText: column.text({ optional: true }),
+    callToAction: column.text({ optional: true }),
+    notes: column.text({ optional: true }),
+    isFavorite: column.boolean({ default: false }),
+    sortOrder: column.number({ default: 1 }),
+    createdAt: column.date({ default: NOW }),
+    updatedAt: column.date({ default: NOW }),
+  },
+  indexes: [
+    { on: ["adCopyId"] },
+    { on: ["userId"] },
+    { on: ["userId", "adCopyId"] },
+    { on: ["userId", "isFavorite"] },
+    { on: ["adCopyId", "sortOrder"] },
+  ],
+});
+
 export const adCopyAssistantTables = {
   AdCopies,
+  AdCopyVariants,
 } as const;

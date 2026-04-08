@@ -6,11 +6,15 @@ import {
   AD_COPY_STATUSES,
   archiveAdCopyForUser,
   createAdCopyForUser,
+  createAdCopyVariantForUser,
   getAdCopyDetailForUser,
   listAdCopiesForUser,
+  parseAdCopyVariantInput,
   restoreAdCopyForUser,
   toggleAdCopyFavoriteForUser,
+  toggleAdCopyVariantFavoriteForUser,
   updateAdCopyForUser,
+  updateAdCopyVariantForUser,
 } from "../lib/adCopies";
 
 function requireUser(context: ActionAPIContext) {
@@ -27,12 +31,17 @@ const adCopyInput = z.object({
   channel: z.enum(AD_COPY_CHANNELS),
   audience: z.string().trim().optional(),
   offer: z.string().trim().optional(),
-  callToAction: z.string().trim().optional(),
+  notes: z.string().trim().optional(),
+  status: z.enum(AD_COPY_STATUSES).default("draft"),
+});
+
+const variantInput = z.object({
+  label: z.string().trim().optional(),
   headline: z.string().trim().optional(),
   primaryText: z.string().trim().optional(),
   secondaryText: z.string().trim().optional(),
+  callToAction: z.string().trim().optional(),
   notes: z.string().trim().optional(),
-  status: z.enum(AD_COPY_STATUSES).default("draft"),
 });
 
 export const server = {
@@ -48,6 +57,38 @@ export const server = {
     handler: async ({ id, ...input }, context) => {
       const user = requireUser(context);
       return { adCopy: await updateAdCopyForUser(user.id, id, input) };
+    },
+  }),
+  createAdCopyVariant: defineAction({
+    input: variantInput.extend({ adCopyId: z.number().int() }),
+    handler: async ({ adCopyId, ...input }, context) => {
+      const user = requireUser(context);
+      return {
+        variant: await createAdCopyVariantForUser(user.id, adCopyId, parseAdCopyVariantInput(input)),
+      };
+    },
+  }),
+  updateAdCopyVariant: defineAction({
+    input: variantInput.extend({ adCopyId: z.number().int(), variantId: z.number().int() }),
+    handler: async ({ adCopyId, variantId, ...input }, context) => {
+      const user = requireUser(context);
+      return {
+        variant: await updateAdCopyVariantForUser(
+          user.id,
+          adCopyId,
+          variantId,
+          parseAdCopyVariantInput(input),
+        ),
+      };
+    },
+  }),
+  toggleAdCopyVariantFavorite: defineAction({
+    input: z.object({ adCopyId: z.number().int(), variantId: z.number().int() }),
+    handler: async ({ adCopyId, variantId }, context) => {
+      const user = requireUser(context);
+      return {
+        variant: await toggleAdCopyVariantFavoriteForUser(user.id, adCopyId, variantId),
+      };
     },
   }),
   toggleAdCopyFavorite: defineAction({

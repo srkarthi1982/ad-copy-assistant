@@ -5,11 +5,15 @@ import {
   AD_COPY_CHANNELS,
   AD_COPY_STATUSES,
   archiveAdCopyForUser,
+  createAdCopyVariantForUser,
   getAdCopyDetailForUser,
   parseAdCopyInput,
+  parseAdCopyVariantInput,
   restoreAdCopyForUser,
   toggleAdCopyFavoriteForUser,
+  toggleAdCopyVariantFavoriteForUser,
   updateAdCopyForUser,
+  updateAdCopyVariantForUser,
 } from "../../../lib/adCopies";
 import { ActionError } from "astro:actions";
 
@@ -22,23 +26,27 @@ if (!Number.isFinite(id)) {
 }
 
 let saveError = "";
+let newVariantValues = {
+  label: "",
+  headline: "",
+  primaryText: "",
+  secondaryText: "",
+  callToAction: "",
+  notes: "",
+};
 
 if (Astro.request.method === "POST") {
   const formData = await Astro.request.formData();
   const intent = String(formData.get("intent") ?? "");
 
   try {
-    if (intent === "update") {
+    if (intent === "updateRecord") {
       const input = parseAdCopyInput({
         title: formData.get("title"),
         campaignName: formData.get("campaignName"),
         channel: formData.get("channel"),
         audience: formData.get("audience"),
         offer: formData.get("offer"),
-        callToAction: formData.get("callToAction"),
-        headline: formData.get("headline"),
-        primaryText: formData.get("primaryText"),
-        secondaryText: formData.get("secondaryText"),
         notes: formData.get("notes"),
         status: formData.get("status"),
       });
@@ -46,7 +54,61 @@ if (Astro.request.method === "POST") {
       return Astro.redirect(`/app/copies/${id}`);
     }
 
-    if (intent === "toggleFavorite") {
+    if (intent === "createVariant") {
+      newVariantValues = {
+        label: String(formData.get("label") ?? ""),
+        headline: String(formData.get("headline") ?? ""),
+        primaryText: String(formData.get("primaryText") ?? ""),
+        secondaryText: String(formData.get("secondaryText") ?? ""),
+        callToAction: String(formData.get("callToAction") ?? ""),
+        notes: String(formData.get("notes") ?? ""),
+      };
+      await createAdCopyVariantForUser(
+        user.id,
+        id,
+        parseAdCopyVariantInput({
+          label: formData.get("label"),
+          headline: formData.get("headline"),
+          primaryText: formData.get("primaryText"),
+          secondaryText: formData.get("secondaryText"),
+          callToAction: formData.get("callToAction"),
+          notes: formData.get("notes"),
+        }),
+      );
+      return Astro.redirect(`/app/copies/${id}`);
+    }
+
+    if (intent === "updateVariant") {
+      const variantId = Number.parseInt(String(formData.get("variantId") ?? ""), 10);
+      if (!Number.isFinite(variantId)) {
+        return Astro.redirect(`/app/copies/${id}`);
+      }
+      await updateAdCopyVariantForUser(
+        user.id,
+        id,
+        variantId,
+        parseAdCopyVariantInput({
+          label: formData.get("label"),
+          headline: formData.get("headline"),
+          primaryText: formData.get("primaryText"),
+          secondaryText: formData.get("secondaryText"),
+          callToAction: formData.get("callToAction"),
+          notes: formData.get("notes"),
+        }),
+      );
+      return Astro.redirect(`/app/copies/${id}`);
+    }
+
+    if (intent === "toggleVariantFavorite") {
+      const variantId = Number.parseInt(String(formData.get("variantId") ?? ""), 10);
+      if (!Number.isFinite(variantId)) {
+        return Astro.redirect(`/app/copies/${id}`);
+      }
+      await toggleAdCopyVariantFavoriteForUser(user.id, id, variantId);
+      return Astro.redirect(`/app/copies/${id}`);
+    }
+
+    if (intent === "toggleRecordFavorite") {
       await toggleAdCopyFavoriteForUser(user.id, id);
       return Astro.redirect(`/app/copies/${id}`);
     }
@@ -93,15 +155,15 @@ try {
           </div>
         </section>
 
-        <section class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <section class="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
           <AvCard className="av-auth-stack-md">
             <div class="av-section-header">
-              <h2 class="av-section-title">Edit record</h2>
-              <p class="av-section-lead">Revise the full ad copy without losing the campaign structure.</p>
+              <h2 class="av-section-title">Edit record context</h2>
+              <p class="av-section-lead">Keep the campaign shell clean here, then manage alternate draft variants below.</p>
             </div>
             {saveError ? <p class="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">{saveError}</p> : null}
             <form method="POST" class="av-auth-stack-sm">
-              <input type="hidden" name="intent" value="update" />
+              <input type="hidden" name="intent" value="updateRecord" />
               <input required name="title" value={adCopy.title} placeholder="Title" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
               <input name="campaignName" value={adCopy.campaignName ?? ""} placeholder="Campaign or product" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
               <select name="channel" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
@@ -109,27 +171,25 @@ try {
               </select>
               <input name="audience" value={adCopy.audience ?? ""} placeholder="Audience" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
               <input name="offer" value={adCopy.offer ?? ""} placeholder="Offer" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
-              <input name="callToAction" value={adCopy.callToAction ?? ""} placeholder="Call to action" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
-              <input name="headline" value={adCopy.headline ?? ""} placeholder="Headline" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
-              <textarea name="primaryText" rows="5" placeholder="Primary copy" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{adCopy.primaryText ?? ""}</textarea>
-              <textarea name="secondaryText" rows="3" placeholder="Secondary copy" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{adCopy.secondaryText ?? ""}</textarea>
-              <textarea name="notes" rows="3" placeholder="Notes" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{adCopy.notes ?? ""}</textarea>
+              <textarea name="notes" rows="3" placeholder="Record notes" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{adCopy.notes ?? ""}</textarea>
               <select name="status" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">
                 {AD_COPY_STATUSES.map((status) => <option value={status} selected={adCopy.status === status}>{status}</option>)}
               </select>
-              <button class="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-slate-950">Save changes</button>
+              <button class="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-slate-950">Save record</button>
             </form>
           </AvCard>
 
           <div class="av-auth-stack-md">
             <AvCard variant="soft" className="av-auth-stack-sm">
               <p class="av-kicker">Record state</p>
-              <h2 class="av-card-heading">{adCopy.isFavorite ? "Favorited" : "Not favorited"}</h2>
+              <h2 class="av-card-heading">
+                {adCopy.variants.length} variant{adCopy.variants.length === 1 ? "" : "s"} saved
+              </h2>
               <p class="av-text-soft">Updated {new Date(adCopy.updatedAt).toLocaleString()}</p>
               <div class="flex flex-wrap gap-2">
                 <form method="POST">
-                  <input type="hidden" name="intent" value="toggleFavorite" />
-                  <button class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">{adCopy.isFavorite ? "Unfavorite" : "Favorite"}</button>
+                  <input type="hidden" name="intent" value="toggleRecordFavorite" />
+                  <button class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">{adCopy.isFavorite ? "Unfavorite Record" : "Favorite Record"}</button>
                 </form>
                 {!adCopy.isArchived ? (
                   <form method="POST">
@@ -146,12 +206,75 @@ try {
             </AvCard>
 
             <AvCard variant="soft" className="av-auth-stack-sm">
-              <p class="av-kicker">Draft preview</p>
-              <h2 class="av-card-heading">{adCopy.headline ?? "No headline yet"}</h2>
-              <p class="av-text-soft">{adCopy.primaryText ?? "No primary copy saved yet."}</p>
-              {adCopy.secondaryText ? <p class="av-text-soft">{adCopy.secondaryText}</p> : null}
+              <p class="av-kicker">Top variant preview</p>
+              <h2 class="av-card-heading">{adCopy.previewVariant?.headline ?? adCopy.previewVariant?.label ?? "No variants yet"}</h2>
+              <p class="av-text-soft">{adCopy.previewVariant?.primaryText ?? "Create the first variant below to start storing actual copy options."}</p>
+              {adCopy.previewVariant?.callToAction ? <p class="text-sm text-emerald-200">{adCopy.previewVariant.callToAction}</p> : null}
             </AvCard>
           </div>
+        </section>
+
+        <section class="av-auth-stack-md">
+          <div class="av-section-header">
+            <h2 class="av-section-title">Variants</h2>
+            <p class="av-section-lead">Store alternate headlines and copy directions inside the same record. Variant favorites are the main best-draft signal.</p>
+          </div>
+
+          <div class="space-y-4">
+            {adCopy.variants.length ? adCopy.variants.map((variant) => (
+              <AvCard variant="soft" className="av-auth-stack-sm">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div class="av-auth-stack-xxs">
+                    <p class="av-kicker">Sort order {variant.sortOrder}</p>
+                    <h3 class="av-card-heading">{variant.label}</h3>
+                    <p class="text-xs text-slate-500">Updated {new Date(variant.updatedAt).toLocaleString()}</p>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    {variant.isFavorite ? <span class="rounded-full border border-emerald-300/30 px-2 py-1 text-xs text-emerald-200">Favorite variant</span> : null}
+                    <form method="POST">
+                      <input type="hidden" name="intent" value="toggleVariantFavorite" />
+                      <input type="hidden" name="variantId" value={variant.id} />
+                      <button class="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-200">{variant.isFavorite ? "Unfavorite" : "Favorite"}</button>
+                    </form>
+                  </div>
+                </div>
+
+                <form method="POST" class="av-auth-stack-sm">
+                  <input type="hidden" name="intent" value="updateVariant" />
+                  <input type="hidden" name="variantId" value={variant.id} />
+                  <input name="label" value={variant.label} placeholder="Variant label" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+                  <input name="headline" value={variant.headline ?? ""} placeholder="Headline" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+                  <textarea name="primaryText" rows="4" placeholder="Primary text" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{variant.primaryText ?? ""}</textarea>
+                  <textarea name="secondaryText" rows="3" placeholder="Secondary text" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{variant.secondaryText ?? ""}</textarea>
+                  <input name="callToAction" value={variant.callToAction ?? ""} placeholder="Call to action" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+                  <textarea name="notes" rows="3" placeholder="Variant notes" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{variant.notes ?? ""}</textarea>
+                  <button class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-950">Save variant</button>
+                </form>
+              </AvCard>
+            )) : (
+              <div class="rounded-xl border border-dashed border-white/15 p-8 text-center">
+                <p class="text-white">No variants saved yet.</p>
+                <p class="mt-2 text-sm text-slate-400">Create the first variant below. Existing legacy copy is migrated into a default variant automatically when present.</p>
+              </div>
+            )}
+          </div>
+
+          <AvCard className="av-auth-stack-md">
+            <div class="av-section-header">
+              <h3 class="av-section-title">Add a new variant</h3>
+              <p class="av-section-lead">Use a clear label if needed, or leave it blank and the app will assign the next variant number.</p>
+            </div>
+            <form method="POST" class="av-auth-stack-sm">
+              <input type="hidden" name="intent" value="createVariant" />
+              <input name="label" value={newVariantValues.label} placeholder="Variant label" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <input name="headline" value={newVariantValues.headline} placeholder="Headline" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <textarea name="primaryText" rows="4" placeholder="Primary text" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{newVariantValues.primaryText}</textarea>
+              <textarea name="secondaryText" rows="3" placeholder="Secondary text" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{newVariantValues.secondaryText}</textarea>
+              <input name="callToAction" value={newVariantValues.callToAction} placeholder="Call to action" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white" />
+              <textarea name="notes" rows="3" placeholder="Variant notes" class="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white">{newVariantValues.notes}</textarea>
+              <button class="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-slate-950">Add variant</button>
+            </form>
+          </AvCard>
         </section>
       </div>
     </AvContainer>
